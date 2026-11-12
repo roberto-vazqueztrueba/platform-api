@@ -1,8 +1,9 @@
 import os
 import time
+import redis
 
 from typing import Any
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, HTTPException
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 APP_NAME = os.getenv("APP_NAME", "platform-api")
@@ -21,6 +22,16 @@ REQUEST_LATENCY = Histogram(
 )
 
 app = FastAPI(title=APP_NAME, version=APP_VERSION)
+
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+redis_client = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        decode_responses=True,
+)
+
 
 @app.middleware("http")
 async def metrics_middleware(request: Any, call_next: Any) -> Response:
@@ -52,3 +63,14 @@ def items() -> dict[str, list[dict[str, Any]]]:
 @app.get("/metrics")
 def metrics() -> Response:
   return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+@app.get("/cache/{key}")
+def set_cache_value(key: str) -> dict[str, str | None]:
+    value = redis_client.get(key)
+    return  {"key": key, "value": value}
+
+@app.put("/cache/{key}")
+def set_cache_variable(key: str, value: str) -> dict[str, str]:
+    redis_client.set(key, value)
+    return {"key": key, "value": value}
+
