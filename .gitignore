@@ -1,0 +1,10 @@
+# Dependencias
+
+# Archivos de registro
+*.log
+
+# Variables de entorno
+.env
+
+# Dockerfile
+Dockerfile
